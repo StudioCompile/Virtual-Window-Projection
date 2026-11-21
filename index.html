@@ -63,7 +63,9 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 360px;flex:1;min-height:0}
 .div{width:1px;height:20px;background:var(--ln2);margin:0 4px}
 
 /* stage */
-#stage{position:relative;width:100%;aspect-ratio:var(--ar);background:#000;border:1px solid #111;border-radius:var(--r);overflow:hidden;touch-action:none}
+#stage{position:relative;width:100%;aspect-ratio:var(--ar);background:#000;border:1px solid #111;border-radius:var(--r);overflow:visible;touch-action:none}
+#pv{border-radius:var(--r)}#ov{overflow:visible}#empty{border-radius:var(--r)}
+@media(min-width:901px){#work{overflow:visible}}
 #pv{position:absolute;inset:0;width:100%;height:100%}#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #ov polygon{fill:none;stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))}
 .h,.e{position:absolute;pointer-events:none;transform:translate(-50%,-50%)}
@@ -225,6 +227,8 @@ body.lk .e{display:none}
     <div class="sec"><h3>Projector</h3>
      <div class="field"><span>Display</span><select id="disp"><option value="auto">Automatic (secondary display)</option></select></div>
      <div class="two"><button id="det" title="Detect connected displays">Detect displays</button><button id="kiosk" title="Hide all controls">Full screen preview</button></div>
+     <button id="win" class="full" title="Show the output in its own window, no fullscreen needed">Open output window</button>
+     <p class="m">Opens the output in its own window that you can place on the projector. No fullscreen needed. Keep this main window open.</p>
     </div>
     <div class="sec"><h3>Schedule</h3>
      <div class="field"><span>Only run at set times</span><label class="sw"><input type="checkbox" id="son"><i></i></label></div>
@@ -308,7 +312,7 @@ function draw(black){
  c.forEach((p,i)=>g.uniform2f(L['c'+i],p[0],p[1]));g.uniform3f(L.k,S.br,S.ct,S.ft);g.uniform1f(L.m,S.mask?1:0);g.drawArrays(g.TRIANGLES,0,3);
 }
 function applyRes(){gl.height=S.res;gl.width=Math.round(S.res*AR);pv.height=540;pv.width=Math.round(540*AR);document.documentElement.style.setProperty('--ar',AR);dirty=true}
-function setAR(s){try{const a=s&&s.width&&s.height?s.width/s.height:null;if(!a||a<.5||a>4||Math.abs(a-AR)<.001)return;AR=a;S.ar=a;applyRes();layout();save()}catch(e){}}
+function setAR(s,force){try{if(popOpen()&&!force)return;const a=s&&s.width&&s.height?s.width/s.height:null;if(!a||a<.5||a>4||Math.abs(a-AR)<.001)return;AR=a;S.ar=a;applyRes();layout();save()}catch(e){}}
 const targetScr=()=>{if(!sd)return null;return S.disp==='auto'?other():sd.screens[+S.disp]||null};
 
 /* schedule + render loop */
@@ -322,6 +326,7 @@ function tick(){
  if(hasV){const w=act&&playing;if(w&&vid.paused&&!vid.ended)playV();else if(!w&&!vid.paused)vid.pause()}
  const show=S.pat||S.mask||(act&&!S.black&&hasV),t=vid.currentTime,ch=dirty||t!==lastT;let drew=false;
  if(show){if(ch||wasBlack){draw(false);wasBlack=false;drew=true}}else if(!wasBlack||dirty){draw(true);wasBlack=true;drew=true}
+ if(drew&&po)copyPop();
  if(mode==='crop'){if(ch)cropView()}
  else if(drew){px.fillStyle='#000';px.fillRect(0,0,pv.width,pv.height);if(show)px.drawImage(gl,0,0,pv.width,pv.height)}
  lastT=t;dirty=false;
@@ -337,6 +342,7 @@ function cropView(){
 /* direct-manipulation editing */
 const hs=[];for(let i=0;i<4;i++){const e=document.createElement('div');e.className='h';e.textContent=i+1;stage.appendChild(e);hs.push(e)}
 const es=[];for(let i=0;i<4;i++){const e=document.createElement('div');e.className='e';stage.appendChild(e);es.push(e)}
+const M=.3,lo=()=>mode==='warp'?-M:0,hi=()=>mode==='warp'?1+M:1,cl2=v=>Math.max(lo(),Math.min(hi(),v));
 const ptsOf=()=>mode==='warp'?S.warp:S.crop,lk=()=>S.lock&&mode==='warp';
 function arSrc(){const vw=vid.videoWidth||16,vh=vid.videoHeight||9,C=S.crop,d=(a,b)=>Math.hypot((a[0]-b[0])*vw,(a[1]-b[1])*vh);let r=((d(C[0],C[1])+d(C[3],C[2]))/2)/((d(C[0],C[3])+d(C[1],C[2]))/2);if(S.rot%2)r=1/r;return r>.05&&r<20?r:16/9}
 function fitAr(q){
@@ -346,7 +352,7 @@ function fitAr(q){
 }
 function lockCorner(p,i,O){
  const k=arSrc()/AR,o=O[(i+2)%4],sx=[-1,1,1,-1][i],sy=[-1,-1,1,1][i];
- let w=Math.max((p.x-o[0])*sx,(p.y-o[1])*sy*k);w=Math.max(.02,Math.min(w,sx<0?o[0]:1-o[0],(sy<0?o[1]:1-o[1])*k));
+ let w=Math.max((p.x-o[0])*sx,(p.y-o[1])*sy*k);w=Math.max(.02,Math.min(w,sx<0?o[0]-lo():hi()-o[0],(sy<0?o[1]-lo():hi()-o[1])*k));
  const h=w/k,xa=sx<0?o[0]-w:o[0],ya=sy<0?o[1]-h:o[1];S.warp=[[xa,ya],[xa+w,ya],[xa+w,ya+h],[xa,ya+h]];
 }
 function R(){
@@ -372,31 +378,33 @@ let D=null,U=[],lastU=0;
 const snap=()=>JSON.stringify([S.warp,S.crop]);
 function pushU(co){const n=Date.now();if(co&&n-lastU<700)return;lastU=n;U.push(snap());if(U.length>60)U.shift()}
 function undo(){const s=U.pop();if(s){[S.warp,S.crop]=JSON.parse(s);layout();save()}}
-stage.onpointerdown=ev=>{
+const work=$('#work');
+work.onpointerdown=ev=>{
+ if(ev.target.closest('button,input,select,label,summary,a'))return;
  if(S.kiosk||cv)return;const h=hit(ev);if(!h)return;pushU();
  const P=ptsOf();if(h.t==='c')sel=h.i;
  D={idx:h.t==='c'?[h.i]:h.t==='e'?[h.i,(h.i+1)%4]:[0,1,2,3],sx:h.p.x,sy:h.p.y,o:JSON.parse(JSON.stringify(P))};
- stage.setPointerCapture(ev.pointerId);layout();
+ work.setPointerCapture(ev.pointerId);layout();
 };
-stage.onpointermove=ev=>{
+work.onpointermove=ev=>{
  if(S.kiosk)return;
- if(cv){stage.style.cursor='default';return}
- if(!D){const h=hit(ev);stage.style.cursor=h?(h.t==='a'?'move':'grab'):'default';return}
+ if(cv){work.style.cursor='default';return}
+ if(!D){const h=hit(ev);work.style.cursor=h?(h.t==='a'?'move':'grab'):'default';return}
  const p=pos(ev),P=ptsOf(),O=D.o,xs=D.idx.map(j=>O[j][0]),ys=D.idx.map(j=>O[j][1]);
  if(lk()&&D.idx.length===1){lockCorner(p,D.idx[0],O);layout();save();return}
- const dx=Math.max(-Math.min(...xs),Math.min(1-Math.max(...xs),p.x-D.sx)),dy=Math.max(-Math.min(...ys),Math.min(1-Math.max(...ys),p.y-D.sy));
+ const dx=Math.max(lo()-Math.min(...xs),Math.min(hi()-Math.max(...xs),p.x-D.sx)),dy=Math.max(lo()-Math.min(...ys),Math.min(hi()-Math.max(...ys),p.y-D.sy));
  D.idx.forEach(j=>{P[j][0]=O[j][0]+dx;P[j][1]=O[j][1]+dy});layout();save();
 };
-stage.onpointerup=stage.onpointercancel=()=>{D=null;if(S.lock&&mode==='crop')fitAr(true)};
+work.onpointerup=work.onpointercancel=()=>{D=null;if(S.lock&&mode==='crop')fitAr(true)};
 function scaleBy(f){
  pushU(true);const P=ptsOf(),cx=P.reduce((a,q)=>a+q[0],0)/4,cy=P.reduce((a,q)=>a+q[1],0)/4;
- P.forEach(q=>{const ox=q[0]-cx,oy=q[1]-cy;if(ox*f>0&&ox>0)f=Math.min(f,(1-cx)/ox);if(ox<0)f=Math.min(f,-cx/ox);if(oy>0)f=Math.min(f,(1-cy)/oy);if(oy<0)f=Math.min(f,-cy/oy)});
+ P.forEach(q=>{const ox=q[0]-cx,oy=q[1]-cy;if(f>1){if(ox>0)f=Math.min(f,(hi()-cx)/ox);if(ox<0)f=Math.min(f,(lo()-cx)/ox);if(oy>0)f=Math.min(f,(hi()-cy)/oy);if(oy<0)f=Math.min(f,(lo()-cy)/oy)}});f=Math.max(f,.01);
  P.forEach(q=>{q[0]=cx+(q[0]-cx)*f;q[1]=cy+(q[1]-cy)*f});layout();save();
 }
 stage.addEventListener('wheel',e=>{if(S.kiosk||cv)return;e.preventDefault();scaleBy(e.deltaY<0?1.04:1/1.04)},{passive:false});
 $('#sm').onclick=()=>scaleBy(1/1.05);$('#lg').onclick=()=>scaleBy(1.05);$('#undo').onclick=undo;
 $('#reset').onclick=()=>{pushU();if(mode==='warp')S.warp=wp();else S.crop=sq();layout();save()};
-function hintTx(){$('#hint').textContent=cv?'Guides are hidden. Press H or choose Show guides to edit again.':mode==='warp'?'Drag a corner to fit the window · drag a side handle to push an edge · drag inside to move · scroll to resize':'Drag the corners to choose which part of the video is shown. The dimmed area is cropped out.'}
+function hintTx(){$('#hint').textContent=cv?'Guides are hidden. Press H or choose Show guides to edit again.':mode==='warp'?'Drag a corner to fit the window · drag a side handle to push an edge · drag inside to move · scroll to resize · you can pull it past the edge of the box':'Drag the corners to choose which part of the video is shown. The dimmed area is cropped out.'}
 function setMode(m){if(m==='crop'&&cv)setClean(false);mode=m;$('#mWarp').classList.toggle('on',m==='warp');$('#mCrop').classList.toggle('on',m==='crop');layout();hintTx()}
 function setClean(on){cv=on;document.body.classList.toggle('cv',on);$('#clean').classList.toggle('on',on);$('#cvT').textContent=on?'Show guides':'Hide guides';if(on&&mode==='crop')setMode('warp');dirty=true;hintTx()}
 $('#mWarp').onclick=()=>setMode('warp');$('#mCrop').onclick=()=>setMode('crop');$('#clean').onclick=()=>setClean(!cv);
@@ -408,7 +416,7 @@ addEventListener('keydown',e=>{
  if(e.ctrlKey||e.metaKey||e.altKey)return;
  if(e.key==='Escape'){if(S.kiosk&&!document.fullscreenElement)setKiosk(false);$('#menu').open=false;return}
  const a={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
- if(a){if(e.target.type==='range'||cv||S.kiosk)return;e.preventDefault();pushU(true);const p=ptsOf()[sel],s=(e.shiftKey?10:1)/1920;p[0]=clamp(p[0]+a[0]*s);p[1]=clamp(p[1]+a[1]*s*AR);layout();save();return}
+ if(a){if(e.target.type==='range'||cv||S.kiosk)return;e.preventDefault();pushU(true);const p=ptsOf()[sel],s=(e.shiftKey?10:1)/1920;p[0]=cl2(p[0]+a[0]*s);p[1]=cl2(p[1]+a[1]*s*AR);layout();save();return}
  if(e.key===' '){if(T==='BUTTON')return;e.preventDefault();$('#pp').click()}
  else if(e.key==='b')$('#black').click();else if(e.key==='g')$('#grid').click();else if(e.key==='w')$('#mask').click();else if(e.key==='h')$('#clean').click();
 });
@@ -500,12 +508,12 @@ $('#sSave').onclick=()=>{
 };
 $('#sLoad').onclick=()=>{menu.open=false;$('#sfile').click()};
 $('#sfile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importFile(f)};
-const okPts=p=>Array.isArray(p)&&p.length===4&&p.every(q=>Array.isArray(q)&&q.length===2&&q.every(v=>typeof v==='number'&&isFinite(v)&&v>=0&&v<=1));
+const okPts=(p,a=0,z=1)=>Array.isArray(p)&&p.length===4&&p.every(q=>Array.isArray(q)&&q.length===2&&q.every(v=>typeof v==='number'&&isFinite(v)&&v>=a&&v<=z));
 function applySettings(o){
  const s=o&&o.settings;if(!o||o.app!=='window-mapper'||!s||typeof s!=='object')throw new Error('bad file');
  const b=(v,d)=>typeof v==='boolean'?v:d,n=(v,a,z,d)=>typeof v==='number'&&isFinite(v)?Math.min(z,Math.max(a,v)):d;
  pushU();
- if(okPts(s.warp))S.warp=s.warp.map(p=>p.slice());
+ if(okPts(s.warp,-.5,1.5))S.warp=s.warp.map(p=>p.slice());
  if(okPts(s.crop))S.crop=s.crop.map(p=>p.slice());
  S.loop=b(s.loop,S.loop);S.mute=b(s.mute,S.mute);S.awake=b(s.awake,S.awake);S.lock=b(s.lock,S.lock);
  if(s.sched&&typeof s.sched==='object'){const h=/^([01]\d|2[0-3]):[0-5]\d$/;S.sched={on:b(s.sched.on,S.sched.on),start:h.test(s.sched.start)?s.sched.start:S.sched.start,end:h.test(s.sched.end)?s.sched.end:S.sched.end}}
@@ -525,6 +533,34 @@ $('#sReset').onclick=()=>{
  pushU();const nm=S.name,tab=S.tab;Object.assign(S,DEF());S.name=nm;S.tab=tab;S.ar=AR;S.pat=S.black=S.mask=false;
  syncUI();save();toast('Settings reset.');
 };
+
+/* output window: shows the picture in its own window, no fullscreen needed */
+let po=null,pc=null,pctx=null;
+const popOpen=()=>!!po&&!po.closed;
+function closePop(){try{po&&po.close()}catch(e){}po=null;pc=null;pctx=null;$('#win').textContent='Open output window';status()}
+function copyPop(){
+ if(!popOpen()){closePop();return}
+ if(pc.width!==gl.width||pc.height!==gl.height){pc.width=gl.width;pc.height=gl.height}
+ pctx.drawImage(gl,0,0);
+}
+function popFit(){if(popOpen())setAR({width:po.innerWidth,height:po.innerHeight},true)}
+async function openPop(){
+ if(popOpen()){closePop();return}
+ const t=targetScr();
+ po=window.open('','wmOutput',t?'popup=yes,left='+t.left+',top='+t.top+',width='+t.width+',height='+t.height:'popup=yes,width=1280,height=720');
+ if(!po){toast('The browser blocked the new window. Allow pop-ups for this page and try again.');return}
+ po.document.title='Window Mapper output';
+ po.document.body.style.cssText='margin:0;background:#000;overflow:hidden;cursor:none';
+ pc=po.document.createElement('canvas');pc.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%';
+ po.document.body.appendChild(pc);pctx=pc.getContext('2d');
+ po.addEventListener('resize',popFit);
+ $('#win').textContent='Close output window';
+ if(!sd)await scr();
+ const s=targetScr();if(s&&popOpen()){try{po.moveTo(s.left,s.top);po.resizeTo(s.width,s.height)}catch(e){}}
+ popFit();dirty=true;status();
+}
+$('#win').onclick=openPop;
+addEventListener('pagehide',()=>{try{po&&po.close()}catch(e){}});
 
 /* projector */
 const other=()=>{if(!sd)return null;const c=sd.currentScreen;return sd.screens.find(x=>x!==c&&(x.left!==c.left||x.top!==c.top))||null};
@@ -558,11 +594,12 @@ function setKiosk(on){S.kiosk=on;document.body.classList.toggle('k',on);if(on)se
 $('#kiosk').onclick=()=>{setKiosk(true);toast('Full screen preview. Double-click or press Esc to return.')};stage.ondblclick=()=>S.kiosk&&setKiosk(false);
 
 function status(){
+ if(po&&po.closed){po=null;pc=null;pctx=null;$('#win').textContent='Open output window'}
  const a=$('#pLive'),b=$('#pScr');let t,c='';
  if(S.mask){t='White fill';c='wn'}else if(S.pat){t='Grid';c='wn'}else if(!hasV){t='No video loaded';c='wn'}else if(S.black){t='Blackout';c='wn'}
  else if(active()){t='Live'+(S.sched.on?' until '+S.sched.end:'');c='ok'}else{t='Off · starts '+S.sched.start;c='wn'}
  a.className='pill '+c;a.textContent=t;
- const f=!!document.fullscreenElement;let u,d='';
+ const f=!!document.fullscreenElement||popOpen();let u,d='';
  if(f){u='Projecting';d='ok'}else if(S.want){u='Output stopped';d='wn'}else if(sd){u=sd.screens.length>1?'Projector connected':'No projector detected';d=sd.screens.length>1?'ok':'wn'}else u='Displays not scanned';
  b.className='pill '+d;b.textContent=u;
 }
