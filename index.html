@@ -7,8 +7,8 @@
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:14px/1.4 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
 #app{display:flex;flex-direction:column;min-height:100%}
 header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ln);flex-wrap:wrap}
-.pills{display:flex;gap:8px;flex-wrap:wrap}.pill{display:flex;align-items:center;gap:7px;background:var(--pn);border:1px solid var(--ln);border-radius:99px;padding:4px 11px;font-size:12px;color:var(--mu)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--mu)}.ok .dot{background:var(--ok)}.wn .dot{background:var(--wn)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}.pill{background:var(--pn);border:1px solid var(--ln);border-radius:99px;padding:4px 12px;font-size:12px;color:var(--mu)}
+.pill.ok{color:var(--ok);border-color:#24533f}.pill.wn{color:var(--wn);border-color:#5a4a22}.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 main{display:grid;grid-template-columns:1fr 320px;flex:1;min-height:0}
 @media(max-width:860px){main{grid-template-columns:1fr}}
 #work{padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -27,8 +27,8 @@ aside{background:var(--pn);border-left:1px solid var(--ln);padding:16px;display:
 h2{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--mu);margin:0 0 8px}
 section+section{border-top:1px solid var(--ln);padding-top:14px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
-button,select,input[type=time]{font:inherit;color:var(--tx);background:#1d222a;border:1px solid var(--ln);border-radius:6px;padding:7px 11px}
-button{cursor:pointer}button:hover{border-color:#3a4350}button.p{background:var(--ac);border-color:var(--ac);color:#04121f;font-weight:600}button.on{background:#26405f;border-color:var(--ac)}
+button,.btn,select,input[type=time]{font:inherit;color:var(--tx);background:#1d222a;border:1px solid var(--ln);border-radius:6px;padding:7px 11px}
+button,.btn{cursor:pointer;display:inline-block}button:hover,.btn:hover{border-color:#3a4350}.p{background:var(--ac)!important;border-color:var(--ac)!important;color:#04121f!important;font-weight:600}button.on{background:#26405f;border-color:var(--ac)}
 .seg{display:flex}.seg button{border-radius:0}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}
 input[type=range]{width:100%;accent-color:var(--ac)}
 .sw{position:relative;width:38px;height:22px;flex:none}.sw input{opacity:0;position:absolute;inset:0;margin:0;cursor:pointer;z-index:1}
@@ -44,25 +44,25 @@ body.lk .e{display:none}</style></head>
 <body>
 <canvas id="gl"></canvas>
 <div id="app">
- <header><b>Window Mapper</b><div class="pills"><span class="pill" id="pLive"><i class="dot"></i><span></span></span><span class="pill" id="pScr"><i class="dot"></i><span></span></span></div></header>
+ <header><b>Window Mapper</b><div class="pills"><span class="pill" id="pLive"></span><span class="pill" id="pScr"></span></div></header>
  <main>
   <div id="work">
-   <div class="bar" id="bar"><span id="barTx">Install Window Mapper as an app for a clean, always-on setup.</span><button class="p" id="inst">Install</button><button id="x">✕</button></div>
+   <div class="bar" id="bar"><span id="barTx">Install Window Mapper as an app for a clean, always-on setup.</span><button class="p" id="inst">Install</button><button id="x">Dismiss</button></div>
    <div class="bar" id="note"><span>Projector output isn’t running.</span><button class="p" id="resume">Resume</button></div>
    <div id="stage"><canvas id="pv" width="960" height="540"></canvas>
     <div id="empty"><div><b style="color:var(--tx)">Drop an MP4 here</b><br>or press “Choose video”</div></div>
     <svg id="ov" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon id="poly"/></svg></div>
    <div id="tools">
     <div class="seg"><button id="mWarp" class="on">Position</button><button id="mCrop">Crop</button></div>
-    <button id="sm" title="Smaller">−</button><button id="lg" title="Larger">+</button>
+    <button id="sm">Smaller</button><button id="lg">Larger</button>
     <button id="lock" title="Keep the picture’s aspect ratio while resizing">Keep aspect</button><button id="mask" title="Fill the area with solid white (W)">White mask</button><button id="undo">Undo</button><button id="reset">Reset</button><button id="grid">Test pattern</button>
    </div>
    <p id="hint" class="m"></p>
   </div>
   <aside>
    <section><h2>Video</h2>
-    <div class="row"><button class="p" id="pick">Choose video</button><span class="m" id="fname" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No file</span></div>
-    <input id="file" type="file" accept="video/*" hidden>
+    <div class="row"><label class="btn p" for="file" id="pick">Choose video</label><span class="m" id="fname" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No file</span></div>
+    <input id="file" class="vh" type="file" accept="video/*,.mp4,.m4v,.mov,.webm">
     <div class="row"><button id="pp">Pause</button><label class="row" style="margin:0;gap:10px">Loop<span class="sw"><input type="checkbox" id="loop"><i></i></span></label></div></section>
    <section><h2>Schedule</h2>
     <div class="row"><span>Only run at set times</span><label class="sw"><input type="checkbox" id="son"><i></i></label></div>
@@ -72,14 +72,14 @@ body.lk .e{display:none}</style></head>
     <div class="row"><button class="p" id="proj" style="flex:1">Start projecting</button><button id="det" title="Detect displays">Detect</button></div>
     <div class="row"><button id="black">Blackout</button><button id="kiosk">Kiosk view</button></div></section>
    <section><details><summary>Advanced</summary>
-    <div class="row"><span>Resolution</span><select id="res"><option value="720">1280×720</option><option value="1080">1920×1080</option><option value="2160">3840×2160</option></select></div>
+    <div class="row"><span>Resolution</span><select id="res"><option value="720">1280x720</option><option value="1080">1920x1080</option><option value="2160">3840x2160</option></select></div>
     <div class="m">Brightness</div><input type="range" id="br" min=".4" max="1.6" step=".01">
     <div class="m">Contrast</div><input type="range" id="ct" min=".6" max="1.6" step=".01">
     <div class="m">Soft edges</div><input type="range" id="ft" min="0" max=".2" step=".005">
-    <div class="row"><button id="rot">Rotate 90°</button><button id="fx">Flip H</button><button id="fy">Flip V</button></div>
+    <div class="row"><button id="rot">Rotate 90</button><button id="fx">Flip H</button><button id="fy">Flip V</button></div>
     <div class="row"><span>Speed</span><select id="spd"><option>0.5</option><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></div>
     <div class="row"><span>Sound</span><label class="sw"><input type="checkbox" id="snd"><i></i></label></div>
-    <input type="range" id="vol" min="0" max="1" step=".01"><div class="row"><button id="aout">Audio output…</button></div>
+    <input type="range" id="vol" min="0" max="1" step=".01"><div class="row"><button id="aout">Audio output</button></div>
     <div class="row"><span>Keep screen awake</span><label class="sw"><input type="checkbox" id="awk"><i></i></label></div>
     <p class="m" id="hl" style="margin:6px 0 0"></p></details></section>
   </aside>
@@ -89,6 +89,7 @@ body.lk .e{display:none}</style></head>
 <script>
 const $=s=>document.querySelector(s);
 const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.k);toast.k=setTimeout(()=>t.style.display='none',4500)};
+addEventListener('error',e=>toast('Error: '+(e.message||'unknown')));
 const sq=()=>[[0,0],[1,0],[1,1],[0,1]],wp=()=>[[.15,.15],[.85,.15],[.85,.85],[.15,.85]],clamp=v=>Math.max(0,Math.min(1,v));
 let S={warp:wp(),crop:sq(),loop:true,sched:{on:false,start:'20:00',end:'06:00'},res:1080,name:'',br:1,ct:1,ft:0,rot:0,fx:0,fy:0,spd:1,mute:true,vol:1,awake:true,kiosk:false,want:false,disp:'auto'};
 try{Object.assign(S,JSON.parse(localStorage.getItem('pm.v2')||'{}'))}catch(e){}
@@ -228,7 +229,7 @@ stage.addEventListener('wheel',e=>{if(S.kiosk)return;e.preventDefault();scaleBy(
 $('#sm').onclick=()=>scaleBy(1/1.05);$('#lg').onclick=()=>scaleBy(1.05);$('#undo').onclick=undo;
 $('#reset').onclick=()=>{pushU();if(mode==='warp')S.warp=wp();else S.crop=sq();layout();save()};
 function setMode(m){mode=m;$('#mWarp').classList.toggle('on',m==='warp');$('#mCrop').classList.toggle('on',m==='crop');
- $('#hint').textContent=m==='warp'?'Drag a corner to fit the window · drag an edge square to push a side · drag inside to move · scroll to resize.':'Drag the corners to choose which part of the video is shown. The darker area is cropped out.';layout()}
+ $('#hint').textContent=m==='warp'?'Drag a corner to fit the window. Drag an edge square to push a side. Drag inside to move. Scroll to resize.':'Drag the corners to choose which part of the video is shown. The darker area is cropped out.';layout()}
 $('#mWarp').onclick=()=>setMode('warp');$('#mCrop').onclick=()=>setMode('crop');
 const flag=(id,k,fn)=>{$('#'+id).onclick=()=>{S[k]=fn?fn(S[k]):!S[k];$('#'+id).classList.toggle('on',!!S[k]);dirty=true;save()}};
 flag('grid','pat');flag('mask','mask');flag('black','black');flag('fx','fx');flag('fy','fy');flag('rot','rot',v=>(v+1)%4);
@@ -254,15 +255,18 @@ async function recover(){
  if(Date.now()-lastRec<15000)return;lastRec=Date.now();rec++;
  const f=await idb('readonly');if(f)load(new File([f],S.name||'video.mp4',{type:f.type}),false);else{vid.load();playV()}
 }
-vid.onerror=()=>setTimeout(recover,2000);
+vid.onerror=()=>{
+ if(vid.error&&vid.error.code===4){toast('This browser can’t play that video. Use an H.264 MP4 (HEVC/H.265 often fails).');return}
+ setTimeout(recover,2000);
+};
 let wd=-1,stall=0;
 setInterval(()=>{
  if(hasV&&playing&&active()&&!vid.paused){if(vid.currentTime===wd){if(++stall>=3){stall=0;recover()}}else stall=0}
  wd=vid.currentTime;
- const s=Math.floor((Date.now()-t0)/1000);$('#hl').textContent='Running '+Math.floor(s/86400)+'d '+Math.floor(s%86400/3600)+'h '+Math.floor(s%3600/60)+'m · auto-recoveries: '+rec;
+ const s=Math.floor((Date.now()-t0)/1000);$('#hl').textContent='Running '+Math.floor(s/86400)+'d '+Math.floor(s%86400/3600)+'h '+Math.floor(s%3600/60)+'m. Auto-recoveries: '+rec;
 },5000);
 const pick=f=>f&&load(f,true);
-$('#pick').onclick=()=>$('#file').click();$('#file').onchange=e=>pick(e.target.files[0]);
+$('#file').onchange=e=>{pick(e.target.files[0]);e.target.value=''};
 document.body.ondragover=e=>e.preventDefault();document.body.ondrop=e=>{e.preventDefault();pick(e.dataTransfer.files[0])};
 $('#pp').onclick=()=>{playing=!playing;$('#pp').textContent=playing?'Pause':'Play'};
 $('#loop').checked=S.loop;$('#loop').onchange=e=>{S.loop=vid.loop=e.target.checked;save()};
@@ -289,7 +293,7 @@ try{navigator.storage&&navigator.storage.persist()}catch(e){}
 const other=()=>{if(!sd)return null;const c=sd.currentScreen;return sd.screens.find(x=>x!==c&&(x.left!==c.left||x.top!==c.top))||null};
 function fillDisp(){
  const s=$('#disp'),v=S.disp;s.innerHTML='<option value="auto">Auto (other display)</option>';
- if(sd)sd.screens.forEach((x,i)=>{const o=document.createElement('option');o.value=i;o.textContent=(x.label||'Display '+(i+1))+' · '+x.width+'×'+x.height;s.appendChild(o)});
+ if(sd)sd.screens.forEach((x,i)=>{const o=document.createElement('option');o.value=i;o.textContent=(x.label||'Display '+(i+1))+' - '+x.width+'x'+x.height;s.appendChild(o)});
  s.value=v;if(s.value!==v)s.value='auto';
 }
 async function scr(){
@@ -319,11 +323,11 @@ $('#kiosk').onclick=()=>{setKiosk(true);toast('Kiosk view. Double-click or press
 function status(){
  const a=$('#pLive'),b=$('#pScr');let t,c='';
  if(S.mask){t='White mask';c='wn'}else if(S.pat){t='Test pattern';c='wn'}else if(!hasV){t='No video loaded';c='wn'}else if(S.black){t='Blackout';c='wn'}
- else if(active()){t='Live'+(S.sched.on?' · until '+S.sched.end:'');c='ok'}else{t='Dark · starts '+S.sched.start;c='wn'}
- a.className='pill '+c;a.lastChild.textContent=t;
+ else if(active()){t='Live'+(S.sched.on?' until '+S.sched.end:'');c='ok'}else{t='Dark. Starts '+S.sched.start;c='wn'}
+ a.className='pill '+c;a.textContent=t;
  const f=!!document.fullscreenElement;let u,d='';
  if(f){u='Projecting';d='ok'}else if(S.want){u='Output stopped';d='wn'}else if(sd){u=sd.screens.length>1?'Projector connected':'No projector detected';d=sd.screens.length>1?'ok':'wn'}else u='Displays not scanned';
- b.className='pill '+d;b.lastChild.textContent=u;
+ b.className='pill '+d;b.textContent=u;
 }
 setInterval(status,1000);
 
