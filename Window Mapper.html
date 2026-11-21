@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1013">
+<title>Window Mapper</title>
+<style>
+:root{color-scheme:dark;--bg:#0e1013;--panel:#15181d;--line:#262b33;--tx:#e6e9ee;--mut:#8a93a1;--acc:#4da3ff;--ok:#3ecf8e;--warn:#f0b34a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:14px/1.4 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+#app{display:grid;grid-template-columns:1fr 330px;height:100%}
+@media(max-width:820px){#app{grid-template-columns:1fr;height:auto}}
+#left{display:flex;flex-direction:column;padding:16px;gap:12px;min-width:0}
+#bar{display:none;align-items:center;gap:10px;background:#1b2330;border:1px solid #2b3a52;padding:8px 12px;border-radius:8px}
+#bar span{flex:1;color:#c8d4e6}
+#stage{position:relative;width:100%;max-width:calc((100vh - 120px)*16/9);aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden;touch-action:none;margin:0 auto}
+#pv{position:absolute;inset:0;width:100%;height:100%}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#ov polygon{fill:rgba(77,163,255,.08);stroke:var(--acc);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.h{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:rgba(14,16,19,.85);border:2px solid var(--acc);color:#fff;font-size:11px;display:grid;place-items:center;cursor:grab;user-select:none;touch-action:none}
+.h.on{background:var(--acc);color:#000}
+#empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--mut);pointer-events:none}
+#hint{color:var(--mut);font-size:12px;text-align:center}
+#side{background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow:auto;display:flex;flex-direction:column;gap:18px}
+h1{font-size:15px;margin:0;letter-spacing:.02em}h2{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);margin:0 0 8px}
+section{border-top:1px solid var(--line);padding-top:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+button,select,input[type=time]{font:inherit;color:var(--tx);background:#1d222a;border:1px solid var(--line);border-radius:6px;padding:7px 11px}
+button{cursor:pointer}button:hover{border-color:#3a4350}
+button.p{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:600}
+.seg{display:flex}.seg button{flex:1;border-radius:0}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0}.seg .on{background:#26405f;border-color:var(--acc)}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.sw{position:relative;width:38px;height:22px;flex:none}.sw input{opacity:0;position:absolute;inset:0;margin:0;cursor:pointer;z-index:1}
+.sw i{position:absolute;inset:0;background:#2a313b;border-radius:11px;transition:.15s}.sw i:after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#cfd6e0;transition:.15s}
+.sw input:checked+i{background:var(--acc)}.sw input:checked+i:after{left:19px;background:#04121f}
+.st{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:var(--mut)}.dot.ok{background:var(--ok)}.dot.w{background:var(--warn)}
+#gl{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
+#gl:fullscreen{opacity:1;width:100%;height:100%;object-fit:contain;background:#000;cursor:none}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222a35;border:1px solid var(--line);padding:9px 14px;border-radius:8px;display:none;z-index:9}
+.m{color:var(--mut);font-size:12px}
+</style></head>
+<body>
+<canvas id="gl"></canvas>
+<div id="app">
+ <div id="left">
+  <div id="bar"><span id="barTx">Install Window Mapper for a clean fullscreen app.</span><button class="p" id="inst">Install</button><button id="x">✕</button></div>
+  <div id="stage">
+   <canvas id="pv" width="960" height="540"></canvas>
+   <div id="empty"><div><b style="color:var(--tx)">Drop an MP4 here</b><br>or use Choose video →</div></div>
+   <svg id="ov" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon id="poly"/></svg>
+  </div>
+  <div id="hint">Drag the four points. Arrow keys nudge the selected point (Shift = ×10).</div>
+ </div>
+ <aside id="side">
+  <h1>WINDOW MAPPER</h1>
+  <section><h2>Source</h2>
+   <div class="row"><button class="p" id="pick">Choose video</button><span class="m" id="fname" style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No file</span></div>
+   <input id="file" type="file" accept="video/mp4,video/*" hidden>
+   <div class="row"><button id="pp">Pause</button><label class="row" style="margin:0;gap:10px">Loop<span class="sw"><input type="checkbox" id="loop"><i></i></span></label></div>
+  </section>
+  <section><h2>Mapping</h2>
+   <div class="seg"><button id="mWarp" class="on">Warp</button><button id="mCrop">Crop</button></div>
+   <p class="m" id="mHelp" style="margin:8px 0">Warp: move the 4 corners of the picture on the wall.</p>
+   <div class="row" style="margin-bottom:0"><span>Scale</span><span class="m" id="scv">100%</span></div>
+   <input type="range" id="sc" min="50" max="200" value="100">
+   <div class="row"><button id="reset">Reset points</button></div>
+  </section>
+  <section><h2>Schedule</h2>
+   <div class="row"><span>Only run between</span><label class="sw"><input type="checkbox" id="son"><i></i></label></div>
+   <div class="row"><input type="time" id="t1"><span class="m">to</span><input type="time" id="t2"></div>
+   <div class="st"><span class="dot" id="dot"></span><span id="stt">Always on</span></div>
+  </section>
+  <section><h2>Output</h2>
+   <div class="row"><span>Resolution</span><select id="res"><option value="720">1280×720</option><option value="1080">1920×1080</option><option value="2160">3840×2160</option></select></div>
+   <div class="row"><button class="p" id="proj" style="width:100%">Send to projector (fullscreen)</button></div>
+   <p class="m" style="margin:0">Opens on your second display (HDMI). Press Esc to exit. Keep this window open.</p>
+  </section>
+ </aside>
+</div>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s),toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.k);toast.k=setTimeout(()=>t.style.display='none',3500)};
+const sq=()=>[[0,0],[1,0],[1,1],[0,1]];
+let S={warp:[[.15,.15],[.85,.15],[.85,.85],[.15,.85]],crop:sq(),loop:true,sched:{on:false,start:'20:00',end:'06:00'},res:1080,name:''};
+try{const j=JSON.parse(localStorage.getItem('pm.v1')||'null');if(j)S=Object.assign(S,j)}catch(e){}
+const save=()=>{try{localStorage.setItem('pm.v1',JSON.stringify(S))}catch(e){}};
+const idb=(m,v)=>new Promise(r=>{try{const q=indexedDB.open('pm',1);q.onupgradeneeded=()=>q.result.createObjectStore('f');q.onerror=()=>r();q.onsuccess=()=>{const s=q.result.transaction('f',m).objectStore('f');const x=m==='readwrite'?s.put(v,'v'):s.get('v');x.onsuccess=()=>r(x.result);x.onerror=()=>r()}}catch(e){r()}});
+
+const vid=document.createElement('video');vid.muted=true;vid.playsInline=true;vid.loop=S.loop;
+let mode='warp',sel=0,playing=true,hasV=false,url=null;
+const gl=$('#gl'),pv=$('#pv'),px=pv.getContext('2d'),stage=$('#stage'),poly=$('#poly');
+
+/* ---------- WebGL: homography warp + quad crop ---------- */
+const g=gl.getContext('webgl');
+const VS='attribute vec2 a;varying vec2 v;void main(){v=vec2(a.x*.5+.5,.5-a.y*.5);gl_Position=vec4(a,0.,1.);}';
+const FS='precision highp float;varying vec2 v;uniform sampler2D t;uniform mat3 H;uniform vec2 c0,c1,c2,c3;void main(){vec3 q=H*vec3(v,1.);vec2 u=q.xy/q.z;vec2 e=min(u,1.-u);if(min(e.x,e.y)<0.){gl_FragColor=vec4(0.,0.,0.,1.);return;}vec2 s=mix(mix(c0,c1,u.x),mix(c3,c2,u.x),u.y);gl_FragColor=texture2D(t,s);}';
+const sh=(t,s)=>{const o=g.createShader(t);g.shaderSource(o,s);g.compileShader(o);return o};
+const pr=g.createProgram();g.attachShader(pr,sh(g.VERTEX_SHADER,VS));g.attachShader(pr,sh(g.FRAGMENT_SHADER,FS));g.linkProgram(pr);g.useProgram(pr);
+const bf=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,bf);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),g.STATIC_DRAW);
+const la=g.getAttribLocation(pr,'a');g.enableVertexAttribArray(la);g.vertexAttribPointer(la,2,g.FLOAT,false,0,0);
+const tex=g.createTexture();g.bindTexture(g.TEXTURE_2D,tex);
+[[g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE],[g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE],[g.TEXTURE_MIN_FILTER,g.LINEAR],[g.TEXTURE_MAG_FILTER,g.LINEAR]].forEach(p=>g.texParameteri(g.TEXTURE_2D,p[0],p[1]));
+const U=n=>g.getUniformLocation(pr,n);
+
+function homog(p){ // unit square -> quad (Heckbert), returns inverse, column-major
+ const [[x0,y0],[x1,y1],[x2,y2],[x3,y3]]=p;
+ const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3;
+ let a,b,c,d,e,f,G=0,H=0;
+ const den=dx1*dy2-dx2*dy1;
+ if(Math.abs(dx3)>1e-9||Math.abs(dy3)>1e-9){G=(dx3*dy2-dx2*dy3)/den;H=(dx1*dy3-dx3*dy1)/den}
+ a=x1-x0+G*x1;b=x3-x0+H*x3;c=x0;d=y1-y0+G*y1;e=y3-y0+H*y3;f=y0;
+ const m=[a,b,c,d,e,f,G,H,1];
+ const A=m[4]*m[8]-m[5]*m[7],B=m[5]*m[6]-m[3]*m[8],C=m[3]*m[7]-m[4]*m[6],det=m[0]*A+m[1]*B+m[2]*C||1e-9;
+ const r=[A,m[2]*m[7]-m[1]*m[8],m[1]*m[5]-m[2]*m[4],B,m[0]*m[8]-m[2]*m[6],m[2]*m[3]-m[0]*m[5],C,m[1]*m[6]-m[0]*m[7],m[0]*m[4]-m[1]*m[3]].map(x=>x/det);
+ return new Float32Array([r[0],r[3],r[6],r[1],r[4],r[7],r[2],r[5],r[8]]);
+}
+function drawGL(){
+ const h=S.res,w=Math.round(h*16/9);
+ if(gl.width!==w||gl.height!==h){gl.width=w;gl.height=h}
+ g.viewport(0,0,w,h);
+ if(vid.readyState>=2)g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,vid);
+ g.uniformMatrix3fv(U('H'),false,homog(S.warp));
+ S.crop.forEach((p,i)=>g.uniform2f(U('c'+i),p[0],p[1]));
+ g.drawArrays(g.TRIANGLES,0,3);
+}
+
+/* ---------- schedule ---------- */
+const tm=s=>{const [h,m]=s.split(':').map(Number);return h*60+m};
+function inWin(){const n=new Date(),m=n.getHours()*60+n.getMinutes(),a=tm(S.sched.start),b=tm(S.sched.end);return a===b||(a<b?m>=a&&m<b:m>=a||m<b)}
+const active=()=>!S.sched.on||inWin();
+
+/* ---------- render loop ---------- */
+let lastSt=0;
+function frame(){
+ requestAnimationFrame(frame);
+ const act=active();
+ if(hasV){
+  if(act&&playing&&vid.paused)vid.play().catch(()=>{});
+  if((!act||!playing)&&!vid.paused)vid.pause();
+ }
+ if(act&&hasV)drawGL();else{g.viewport(0,0,gl.width,gl.height);g.clearColor(0,0,0,1);g.clear(g.COLOR_BUFFER_BIT)}
+ px.fillStyle='#000';px.fillRect(0,0,pv.width,pv.height);
+ if(mode==='warp')px.drawImage(gl,0,0,pv.width,pv.height);
+ else if(hasV&&vid.readyState>=2){const r=R();px.drawImage(vid,r.x*pv.width,r.y*pv.height,r.w*pv.width,r.h*pv.height)}
+ const n=Date.now();if(n-lastSt>1000){lastSt=n;status()}
+}
+function status(){
+ const d=$('#dot'),t=$('#stt');
+ if(!S.sched.on){d.className='dot ok';t.textContent='Schedule off — always on'}
+ else if(inWin()){d.className='dot ok';t.textContent='Live until '+S.sched.end}
+ else{d.className='dot w';t.textContent='Dark — starts at '+S.sched.start}
+}
+
+/* ---------- handles ---------- */
+const hs=[0,1,2,3].map(i=>{const e=document.createElement('div');e.className='h';e.textContent=i+1;stage.appendChild(e);
+ e.onpointerdown=ev=>{sel=i;e.setPointerCapture(ev.pointerId);layout();ev.preventDefault()};
+ e.onpointermove=ev=>{if(!e.hasPointerCapture(ev.pointerId))return;const b=stage.getBoundingClientRect(),r=R();
+  const p=pts()[i];p[0]=clamp((((ev.clientX-b.left)/b.width)-r.x)/r.w);p[1]=clamp((((ev.clientY-b.top)/b.height)-r.y)/r.h);layout();save()};
+ return e});
+const clamp=v=>Math.max(0,Math.min(1,v));
+const pts=()=>mode==='warp'?S.warp:S.crop;
+function R(){
+ if(mode==='warp'||!vid.videoWidth)return{x:0,y:0,w:1,h:1};
+ const vr=vid.videoWidth/vid.videoHeight,sr=16/9;
+ if(vr>sr){const h=sr/vr;return{x:0,y:(1-h)/2,w:1,h}}
+ const w=vr/sr;return{x:(1-w)/2,y:0,w,h:1};
+}
+function layout(){
+ const r=R(),p=pts();
+ hs.forEach((h,i)=>{h.style.left=(r.x+p[i][0]*r.w)*100+'%';h.style.top=(r.y+p[i][1]*r.h)*100+'%';h.classList.toggle('on',i===sel)});
+ poly.setAttribute('points',p.map(q=>((r.x+q[0]*r.w)*100)+','+((r.y+q[1]*r.h)*100)).join(' '));
+}
+addEventListener('keydown',e=>{
+ if(/INPUT|SELECT/.test(e.target.tagName)&&e.target.type!=='range')return;
+ const k={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(!k)return;
+ e.preventDefault();const st=(e.shiftKey?10:1)/1920,p=pts()[sel];
+ p[0]=clamp(p[0]+k[0]*st);p[1]=clamp(p[1]+k[1]*st*(16/9)*(mode==='warp'?1:1));layout();save();
+});
+
+/* ---------- controls ---------- */
+function setMode(m){mode=m;$('#mWarp').classList.toggle('on',m==='warp');$('#mCrop').classList.toggle('on',m==='crop');
+ $('#mHelp').textContent=m==='warp'?'Warp: move the 4 corners of the picture on the wall.':'Crop: move the 4 corners on the source video to choose what is shown.';layout()}
+$('#mWarp').onclick=()=>setMode('warp');$('#mCrop').onclick=()=>setMode('crop');
+$('#reset').onclick=()=>{if(mode==='warp')S.warp=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];else S.crop=sq();layout();save()};
+let lastSc=100;const sc=$('#sc');
+sc.oninput=()=>{const f=sc.value/lastSc;lastSc=+sc.value;$('#scv').textContent=sc.value+'%';const p=pts(),cx=p.reduce((a,q)=>a+q[0],0)/4,cy=p.reduce((a,q)=>a+q[1],0)/4;
+ p.forEach(q=>{q[0]=clamp(cx+(q[0]-cx)*f);q[1]=clamp(cy+(q[1]-cy)*f)});layout();save()};
+sc.onchange=()=>{sc.value=lastSc=100;$('#scv').textContent='100%'};
+$('#loop').checked=S.loop;$('#loop').onchange=e=>{S.loop=vid.loop=e.target.checked;save()};
+$('#pp').onclick=()=>{playing=!playing;$('#pp').textContent=playing?'Pause':'Play'};
+$('#son').checked=S.sched.on;$('#t1').value=S.sched.start;$('#t2').value=S.sched.end;
+$('#son').onchange=e=>{S.sched.on=e.target.checked;save();status()};
+$('#t1').onchange=e=>{S.sched.start=e.target.value||'20:00';save();status()};
+$('#t2').onchange=e=>{S.sched.end=e.target.value||'06:00';save();status()};
+$('#res').value=S.res;$('#res').onchange=e=>{S.res=+e.target.value;save()};
+
+function load(f,persist){
+ if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(f);vid.src=url;vid.loop=S.loop;hasV=true;
+ S.name=f.name;$('#fname').textContent=f.name;$('#empty').style.display='none';save();
+ vid.onloadedmetadata=layout;vid.play().catch(()=>{});if(persist)idb('readwrite',f);
+}
+$('#pick').onclick=()=>$('#file').click();$('#file').onchange=e=>e.target.files[0]&&load(e.target.files[0],true);
+stage.ondragover=e=>e.preventDefault();stage.ondrop=e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)load(f,true)};
+idb('readonly').then(f=>{if(f)load(new File([f],S.name||'video.mp4',{type:f.type}),false)});
+
+async function project(){
+ try{
+  if(window.getScreenDetails){
+   const d=await getScreenDetails(),c=d.currentScreen;
+   const s=d.screens.find(s=>s!==c&&(s.left!==c.left||s.top!==c.top));
+   if(s){await gl.requestFullscreen({screen:s});return}
+  }
+ }catch(e){}
+ try{await gl.requestFullscreen();toast('Drag this window to the projector display first if it opened on the wrong screen.')}
+ catch(e){toast('Fullscreen was blocked. Open the app in its own tab or window.')}
+}
+$('#proj').onclick=project;
+
+/* ---------- close prompt ---------- */
+addEventListener('beforeunload',e=>{if(hasV){e.preventDefault();e.returnValue=''}});
+
+/* ---------- PWA install ---------- */
+(function(){
+ const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+ x.fillStyle='#0e1013';x.fillRect(0,0,512,512);x.strokeStyle='#4da3ff';x.lineWidth=22;x.beginPath();x.moveTo(120,150);x.lineTo(400,110);x.lineTo(370,400);x.lineTo(100,360);x.closePath();x.stroke();
+ const i512=c.toDataURL('image/png');
+ const m={name:'Window Mapper',short_name:'Mapper',start_url:location.href.split('#')[0],scope:location.href.split('#')[0].replace(/[^/]*$/,''),display:'standalone',background_color:'#0e1013',theme_color:'#0e1013',icons:[{src:i512,sizes:'512x512',type:'image/png',purpose:'any'}]};
+ try{const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));document.head.appendChild(l)}catch(e){}
+})();
+let dp=null;const bar=$('#bar');
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;if(!standalone&&!sessionStorage.getItem('pm.nx'))bar.style.display='flex'});
+addEventListener('appinstalled',()=>bar.style.display='none');
+$('#inst').onclick=async()=>{if(dp){dp.prompt();await dp.userChoice;dp=null;bar.style.display='none'}else toast('Use your browser menu: Install app / Add to Home Screen.')};
+$('#x').onclick=()=>{bar.style.display='none';try{sessionStorage.setItem('pm.nx','1')}catch(e){}};
+if(!standalone&&/iPad|iPhone|iPod/.test(navigator.userAgent)){$('#barTx').textContent='Install: tap Share, then Add to Home Screen.';$('#inst').style.display='none';bar.style.display='flex'}
+
+layout();status();frame();
+</script>
+</body></html>
