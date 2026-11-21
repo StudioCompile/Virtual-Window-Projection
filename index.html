@@ -308,7 +308,7 @@ function draw(black){
  c.forEach((p,i)=>g.uniform2f(L['c'+i],p[0],p[1]));g.uniform3f(L.k,S.br,S.ct,S.ft);g.uniform1f(L.m,S.mask?1:0);g.drawArrays(g.TRIANGLES,0,3);
 }
 function applyRes(){gl.height=S.res;gl.width=Math.round(S.res*AR);pv.height=540;pv.width=Math.round(540*AR);document.documentElement.style.setProperty('--ar',AR);dirty=true}
-function setAR(s){const a=s&&s.width&&s.height?s.width/s.height:null;if(!a||Math.abs(a-AR)<.001)return;AR=a;S.ar=a;applyRes();layout();save()}
+function setAR(s){try{const a=s&&s.width&&s.height?s.width/s.height:null;if(!a||a<.5||a>4||Math.abs(a-AR)<.001)return;AR=a;S.ar=a;applyRes();layout();save()}catch(e){}}
 const targetScr=()=>{if(!sd)return null;return S.disp==='auto'?other():sd.screens[+S.disp]||null};
 
 /* schedule + render loop */
@@ -534,8 +534,8 @@ function fillDisp(){
  s.value=v;if(s.value!==v)s.value='auto';
 }
 async function scr(){
- if(!window.getScreenDetails){toast('This browser can’t list displays. Chrome or Edge gives full projector control.');return}
- try{sd=await getScreenDetails();sd.addEventListener('screenschange',onScr);fillDisp();setAR(targetScr());status()}catch(e){toast('Display access was declined.')}
+ if(!window.getScreenDetails){toast('This browser can’t list displays, so it will fill the screen this window is on. Drag this window to the projector first, or use Chrome/Edge.');return}
+ try{sd=await getScreenDetails();sd.addEventListener('screenschange',onScr);fillDisp();setAR(targetScr());status()}catch(e){sd=null;toast('Display access was declined or blocked here, so it will fill the screen this window is on. Drag this window to the projector, then click Start projecting.')}
 }
 function onScr(){fillDisp();setAR(targetScr());status();if(S.want&&!document.fullscreenElement)project(true)}
 $('#disp').onchange=e=>{S.disp=e.target.value;setAR(targetScr());save()};
@@ -545,7 +545,7 @@ async function project(silent){
   if(sd){const s=S.disp==='auto'?other():sd.screens[+S.disp];
    if(s){setAR(s);await gl.requestFullscreen({screen:s});return}
    if(!silent)toast('No second display found. Connect the projector and output will start by itself.');return}
-  await gl.requestFullscreen();
+  setAR(window.screen);await gl.requestFullscreen();
  }catch(e){if(!silent)toast('Fullscreen was blocked. Click Start projecting again.')}
 }
 function stop(){S.want=false;save();if(document.fullscreenElement)document.exitFullscreen()}
