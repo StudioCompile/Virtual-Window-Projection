@@ -114,6 +114,7 @@ const VS='attribute vec2 a;varying vec2 v;void main(){v=vec2(a.x*.5+.5,.5-a.y*.5
 const FS='precision highp float;varying vec2 v;uniform sampler2D t;uniform mat3 H;uniform vec2 c0,c1,c2,c3;uniform vec3 k;uniform float m;void main(){vec3 q=H*vec3(v,1.);vec2 u=q.xy/q.z;vec2 e=min(u,1.-u);float d=min(e.x,e.y);if(d<0.){gl_FragColor=vec4(0.,0.,0.,1.);return;}vec2 s=mix(mix(c0,c1,u.x),mix(c3,c2,u.x),u.y);vec3 c=texture2D(t,s).rgb;c=(c-.5)*k.y+.5;c*=k.x;c=mix(c,vec3(1.),m);if(k.z>0.)c*=smoothstep(0.,k.z,d);gl_FragColor=vec4(c,1.);}';
 function initGL(){
  g=gl.getContext('webgl',{antialias:false});
+ if(!g){toast('WebGL is not available in this browser.');return}
  const sh=(t,s)=>{const o=g.createShader(t);g.shaderSource(o,s);g.compileShader(o);return o};
  pr=g.createProgram();g.attachShader(pr,sh(g.VERTEX_SHADER,VS));g.attachShader(pr,sh(g.FRAGMENT_SHADER,FS));g.linkProgram(pr);g.useProgram(pr);
  g.bindBuffer(g.ARRAY_BUFFER,g.createBuffer());g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),g.STATIC_DRAW);
@@ -151,7 +152,7 @@ function inWin(){const n=new Date(),m=n.getHours()*60+n.getMinutes(),a=tm(S.sche
 const active=()=>!S.sched.on||inWin();
 function playV(){vid.play().catch(()=>{if(!vid.muted){vid.muted=true;vid.play().catch(()=>{});toast('Browser blocked sound until you click — playing muted.')}})}
 function tick(){
- if(lost)return;
+ if(lost||!g)return;
  const act=active();
  if(hasV){const w=act&&playing;if(w&&vid.paused&&!vid.ended)playV();else if(!w&&!vid.paused)vid.pause()}
  const show=S.pat||S.mask||(act&&!S.black&&hasV),t=vid.currentTime,ch=dirty||t!==lastT;let drew=false;
