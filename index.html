@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff"><title>Window Mapper</title>
 <style>
-:root{color-scheme:light;--bg:#f5f5f5;--pn:#ffffff;--pn2:#ffffff;--ln:#e0e0e0;--ln2:#c4c4c4;--tx:#111;--mu:#666;--ac:#111;--ac2:#111;--sel:#111;--ok:#111;--wn:#111;--r:3px}
+:root{color-scheme:light;--bg:#f5f5f5;--pn:#ffffff;--pn2:#ffffff;--ln:#e0e0e0;--ln2:#c4c4c4;--tx:#111;--mu:#666;--ac:#111;--ac2:#111;--sel:#111;--ok:#111;--wn:#111;--r:3px;--ar:1.7778}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 #app{display:flex;flex-direction:column;min-height:100%;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -49,7 +49,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 360px;flex:1;min-height:0}
 @media(max-width:900px){#work{justify-content:flex-start}}
 .bar{display:none;align-items:center;gap:10px;background:var(--pn);border:1px solid var(--ln2);padding:8px 8px 8px 14px;border-radius:var(--r)}
 .bar span{flex:1;color:var(--tx)}
-#col{display:flex;flex-direction:column;gap:10px;width:min(100%,max(560px,calc((100vh - 250px)*16/9)));margin:0 auto}
+#col{display:flex;flex-direction:column;gap:10px;width:min(100%,max(560px,calc((100vh - 250px)*var(--ar))));margin:0 auto}
 @media(max-width:900px){#col{width:100%}}
 
 /* toolbar */
@@ -63,7 +63,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 360px;flex:1;min-height:0}
 .div{width:1px;height:20px;background:var(--ln2);margin:0 4px}
 
 /* stage */
-#stage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid #111;border-radius:var(--r);overflow:hidden;touch-action:none}
+#stage{position:relative;width:100%;aspect-ratio:var(--ar);background:#000;border:1px solid #111;border-radius:var(--r);overflow:hidden;touch-action:none}
 #pv{position:absolute;inset:0;width:100%;height:100%}#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #ov polygon{fill:none;stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))}
 .h,.e{position:absolute;pointer-events:none;transform:translate(-50%,-50%)}
@@ -114,7 +114,7 @@ kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);b
 #hl{margin:10px 0 0}
 
 #gl{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
-#gl:fullscreen{opacity:1;width:100%;height:100%;object-fit:contain;background:#000;cursor:none}
+#gl:fullscreen{opacity:1;width:100%;height:100%;object-fit:fill;background:#000;cursor:none}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:var(--r);display:none;z-index:30;max-width:90%;box-shadow:0 4px 14px rgba(20,28,40,.25)}
 body.cv .h,body.cv .e,body.cv #ov{display:none!important}
 body.k header,body.k aside,body.k #tools,body.k #tp,body.k #hint,body.k .bar,body.k .h,body.k .e,body.k #ov,body.k #empty{display:none!important}
@@ -250,10 +250,12 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 addEventListener('error',e=>toast('Error: '+(e.message||'unknown')));
 const sq=()=>[[0,0],[1,0],[1,1],[0,1]],wp=()=>[[.15,.15],[.85,.15],[.85,.85],[.15,.85]],clamp=v=>Math.max(0,Math.min(1,v));
 const AUTO='Automatic (secondary display)';
-const DEF=()=>({warp:wp(),crop:sq(),loop:true,sched:{on:false,start:'20:00',end:'06:00'},res:1080,name:'',br:1,ct:1,ft:0,rot:0,fx:0,fy:0,spd:1,mute:true,vol:1,awake:true,kiosk:false,want:false,disp:'auto',lock:false,tab:'media'});
+const DEF=()=>({warp:wp(),crop:sq(),loop:true,sched:{on:false,start:'20:00',end:'06:00'},res:1080,name:'',br:1,ct:1,ft:0,rot:0,fx:0,fy:0,spd:1,mute:true,vol:1,awake:true,kiosk:false,want:false,disp:'auto',lock:false,tab:'media',ar:16/9});
 let S=DEF();
 try{Object.assign(S,JSON.parse(localStorage.getItem('pm.v2')||'{}'))}catch(e){}
 S.pat=false;S.black=false;S.mask=false;
+/* output aspect ratio: follows the projector's real screen shape so fullscreen fills it with no black bars */
+let AR=(typeof S.ar==='number'&&S.ar>.5&&S.ar<4)?S.ar:16/9;
 let sv;const save=()=>{clearTimeout(sv);sv=setTimeout(()=>{try{localStorage.setItem('pm.v2',JSON.stringify(S))}catch(e){}},250)};
 const idb=(m,v)=>new Promise(r=>{try{const q=indexedDB.open('pm',1);q.onupgradeneeded=()=>q.result.createObjectStore('f');q.onerror=()=>r();q.onsuccess=()=>{const s=q.result.transaction('f',m).objectStore('f');const x=m==='readwrite'?s.put(v,'v'):s.get('v');x.onsuccess=()=>r(x.result);x.onerror=()=>r()}}catch(e){r()}});
 
@@ -305,7 +307,9 @@ function draw(black){
  if(S.fx)c=[c[1],c[0],c[3],c[2]];if(S.fy)c=[c[3],c[2],c[1],c[0]];for(let i=0;i<S.rot;i++)c=[c[3],c[0],c[1],c[2]];
  c.forEach((p,i)=>g.uniform2f(L['c'+i],p[0],p[1]));g.uniform3f(L.k,S.br,S.ct,S.ft);g.uniform1f(L.m,S.mask?1:0);g.drawArrays(g.TRIANGLES,0,3);
 }
-function applyRes(){gl.height=S.res;gl.width=Math.round(S.res*16/9);dirty=true}
+function applyRes(){gl.height=S.res;gl.width=Math.round(S.res*AR);pv.height=540;pv.width=Math.round(540*AR);document.documentElement.style.setProperty('--ar',AR);dirty=true}
+function setAR(s){const a=s&&s.width&&s.height?s.width/s.height:null;if(!a||Math.abs(a-AR)<.001)return;AR=a;S.ar=a;applyRes();layout();save()}
+const targetScr=()=>{if(!sd)return null;return S.disp==='auto'?other():sd.screens[+S.disp]||null};
 
 /* schedule + render loop */
 const tm=s=>{const [h,m]=s.split(':').map(Number);return h*60+m};
@@ -336,18 +340,18 @@ const es=[];for(let i=0;i<4;i++){const e=document.createElement('div');e.classNa
 const ptsOf=()=>mode==='warp'?S.warp:S.crop,lk=()=>S.lock&&mode==='warp';
 function arSrc(){const vw=vid.videoWidth||16,vh=vid.videoHeight||9,C=S.crop,d=(a,b)=>Math.hypot((a[0]-b[0])*vw,(a[1]-b[1])*vh);let r=((d(C[0],C[1])+d(C[3],C[2]))/2)/((d(C[0],C[3])+d(C[1],C[2]))/2);if(S.rot%2)r=1/r;return r>.05&&r<20?r:16/9}
 function fitAr(q){
- if(!q)pushU();const k=9*arSrc()/16,xs=S.warp.map(a=>a[0]),ys=S.warp.map(a=>a[1]),mx=Math.min(...xs),Mx=Math.max(...xs),my=Math.min(...ys),My=Math.max(...ys);
+ if(!q)pushU();const k=arSrc()/AR,xs=S.warp.map(a=>a[0]),ys=S.warp.map(a=>a[1]),mx=Math.min(...xs),Mx=Math.max(...xs),my=Math.min(...ys),My=Math.max(...ys);
  const w=Math.max(.05,Math.min(Mx-mx,1,k)),h=w/k,x=Math.min(clamp((mx+Mx)/2-w/2),1-w),y=Math.min(clamp((my+My)/2-h/2),1-h);
  S.warp=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];layout();save();
 }
 function lockCorner(p,i,O){
- const k=9*arSrc()/16,o=O[(i+2)%4],sx=[-1,1,1,-1][i],sy=[-1,-1,1,1][i];
+ const k=arSrc()/AR,o=O[(i+2)%4],sx=[-1,1,1,-1][i],sy=[-1,-1,1,1][i];
  let w=Math.max((p.x-o[0])*sx,(p.y-o[1])*sy*k);w=Math.max(.02,Math.min(w,sx<0?o[0]:1-o[0],(sy<0?o[1]:1-o[1])*k));
  const h=w/k,xa=sx<0?o[0]-w:o[0],ya=sy<0?o[1]-h:o[1];S.warp=[[xa,ya],[xa+w,ya],[xa+w,ya+h],[xa,ya+h]];
 }
 function R(){
  if(mode==='warp'||!vid.videoWidth)return{x:0,y:0,w:1,h:1};
- const vr=vid.videoWidth/vid.videoHeight,sr=16/9;
+ const vr=vid.videoWidth/vid.videoHeight,sr=AR;
  if(vr>sr){const h=sr/vr;return{x:0,y:(1-h)/2,w:1,h}}const w=vr/sr;return{x:(1-w)/2,y:0,w,h:1};
 }
 function layout(){
@@ -404,7 +408,7 @@ addEventListener('keydown',e=>{
  if(e.ctrlKey||e.metaKey||e.altKey)return;
  if(e.key==='Escape'){if(S.kiosk&&!document.fullscreenElement)setKiosk(false);$('#menu').open=false;return}
  const a={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
- if(a){if(e.target.type==='range'||cv||S.kiosk)return;e.preventDefault();pushU(true);const p=ptsOf()[sel],s=(e.shiftKey?10:1)/1920;p[0]=clamp(p[0]+a[0]*s);p[1]=clamp(p[1]+a[1]*s*16/9);layout();save();return}
+ if(a){if(e.target.type==='range'||cv||S.kiosk)return;e.preventDefault();pushU(true);const p=ptsOf()[sel],s=(e.shiftKey?10:1)/1920;p[0]=clamp(p[0]+a[0]*s);p[1]=clamp(p[1]+a[1]*s*AR);layout();save();return}
  if(e.key===' '){if(T==='BUTTON')return;e.preventDefault();$('#pp').click()}
  else if(e.key==='b')$('#black').click();else if(e.key==='g')$('#grid').click();else if(e.key==='w')$('#mask').click();else if(e.key==='h')$('#clean').click();
 });
@@ -518,7 +522,7 @@ function applySettings(o){
 function importFile(f){f.text().then(t=>applySettings(JSON.parse(t))).catch(()=>toast('That file isn’t a Window Mapper settings file.'))}
 $('#sReset').onclick=()=>{
  menu.open=false;if(!confirm('Reset all settings to their defaults? Your video stays loaded.'))return;
- pushU();const nm=S.name,tab=S.tab;Object.assign(S,DEF());S.name=nm;S.tab=tab;S.pat=S.black=S.mask=false;
+ pushU();const nm=S.name,tab=S.tab;Object.assign(S,DEF());S.name=nm;S.tab=tab;S.ar=AR;S.pat=S.black=S.mask=false;
  syncUI();save();toast('Settings reset.');
 };
 
@@ -531,15 +535,15 @@ function fillDisp(){
 }
 async function scr(){
  if(!window.getScreenDetails){toast('This browser can’t list displays. Chrome or Edge gives full projector control.');return}
- try{sd=await getScreenDetails();sd.addEventListener('screenschange',onScr);fillDisp();status()}catch(e){toast('Display access was declined.')}
+ try{sd=await getScreenDetails();sd.addEventListener('screenschange',onScr);fillDisp();setAR(targetScr());status()}catch(e){toast('Display access was declined.')}
 }
-function onScr(){fillDisp();status();if(S.want&&!document.fullscreenElement)project(true)}
-$('#disp').onchange=e=>{S.disp=e.target.value;save()};
+function onScr(){fillDisp();setAR(targetScr());status();if(S.want&&!document.fullscreenElement)project(true)}
+$('#disp').onchange=e=>{S.disp=e.target.value;setAR(targetScr());save()};
 async function project(silent){
  S.want=true;save();
  try{
   if(sd){const s=S.disp==='auto'?other():sd.screens[+S.disp];
-   if(s){await gl.requestFullscreen({screen:s});return}
+   if(s){setAR(s);await gl.requestFullscreen({screen:s});return}
    if(!silent)toast('No second display found. Connect the projector and output will start by itself.');return}
   await gl.requestFullscreen();
  }catch(e){if(!silent)toast('Fullscreen was blocked. Click Start projecting again.')}
